@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AskRedo — Your AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #04040c;
+    --surface: #0a0a18;
+    --card: #0f0f22;
+    --border: #1e1e3f;
+    --accent: #6366f1;
+    --pink: #ec4899;
+    --teal: #2dd4bf;
+    --text: #e2e2f0;
+    --muted: #6b6b8a;
+    --gold: #fbbf24;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Ambient glow */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -150px; left: 50%;
+    transform: translateX(-50%);
+    width: 500px; height: 300px;
+    background: radial-gradient(ellipse, rgba(99,102,241,0.15) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    width: 100%;
+    max-width: 700px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(4,4,12,0.92);
+    backdrop-filter: blur(16px);
+    flex-shrink: 0;
+  }
+
+  .logo { display: flex; align-items: center; gap: 12px; }
+
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+
+  .logo-name {
+    font-size: 1.1rem; font-weight: 800;
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .logo-sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  .counter {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 99px; padding: 7px 15px;
+    font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--muted);
+  }
+
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Messages */
+  .messages {
+    flex: 1; overflow-y: auto;
+    padding: 20px 16px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  .msg-row {
+    display: flex; align-items: flex-end; gap: 10px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .msg-row.user { flex-direction: row-reverse; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+
+  .avatar.ai { background: linear-gradient(135deg, var(--accent), var(--pink)); }
+  .avatar.user { background: var(--card); border: 1px solid var(--border); }
+
+  .bubble {
+    max-width: 72%; padding: 12px 16px;
+    font-size: 0.92rem; line-height: 1.65;
+    border-radius: 18px; word-break: break-word;
+    white-space: pre-wrap;
+  }
+
+  .bubble.ai {
+    background: var(--card); border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+
+  .bubble.user {
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    color: white; border-bottom-right-radius: 4px;
+  }
+
+  /* Typing dots */
+  .typing { display: flex; gap: 5px; align-items: center; padding: 4px 0; }
+  .typing span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Suggestions */
+  .suggestions {
+    padding: 0 16px 10px;
+  }
+  .suggestions-label {
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 99px; padding: 6px 13px;
+    font-size: 12px; color: var(--text);
+    cursor: pointer; font-family: 'Outfit', sans-serif;
+    transition: border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Input */
+  .input-area {
+    padding: 12px 16px 20px;
+    border-top: 1px solid var(--border);
+    background: rgba(4,4,12,0.95);
+    backdrop-filter: blur(16px);
+    flex-shrink: 0;
+  }
+
+  .input-box {
+    display: flex; gap: 10px; align-items: flex-end;
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 16px; padding: 10px 14px;
+    transition: border-color 0.2s;
+  }
+  .input-box:focus-within { border-color: var(--accent); }
+
+  .input-box textarea {
+    flex: 1; background: transparent; border: none;
+    color: var(--text); font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem; outline: none; resize: none;
+    max-height: 120px; line-height: 1.5;
+  }
+  .input-box textarea::placeholder { color: var(--muted); }
+
+  .send-btn {
+    width: 38px; height: 38px; border-radius: 10px;
+    border: none; cursor: pointer; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    color: white; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .send-btn:hover:not(:disabled) { opacity: 0.85; transform: scale(0.96); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .input-footer {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-top: 7px; padding: 0 2px;
+  }
+  .footer-brand { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .upgrade-nudge {
+    font-size: 11.5px; color: var(--gold); cursor: pointer; font-weight: 600;
+  }
+  .upgrade-nudge:hover { text-decoration: underline; }
+
+  /* Paywall Modal */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(4,4,12,0.88);
+    backdrop-filter: blur(10px);
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .overlay.show { display: flex; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 24px; padding: 32px 28px;
+    max-width: 400px; width: 100%;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)}
+  }
+
+  .modal-icon { font-size: 2.8rem; text-align: center; margin-bottom: 10px; }
+  .modal h2 {
+    text-align: center; font-size: 1.35rem; font-weight: 800; margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .modal p { text-align: center; color: var(--muted); font-size: 0.87rem; line-height: 1.6; margin-bottom: 20px; }
+
+  .plan-toggle {
+    display: flex; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 4px; margin-bottom: 16px;
+  }
+  .plan-btn {
+    flex: 1; padding: 9px; border: none; border-radius: 9px;
+    background: transparent; color: var(--muted);
+    font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.88rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .plan-btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--pink)); color: white;
+  }
+
+  .price-box {
+    background: var(--card); border: 1px solid var(--accent);
+    border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 14px;
+  }
+  .price-amount { font-size: 2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+  .price-period { font-size: 0.8rem; color: var(--muted); }
+
+  .features { list-style: none; margin-bottom: 18px; }
+  .features li { font-size: 0.87rem; margin-bottom: 8px; }
+
+  .upgrade-btn {
+    width: 100%; padding: 14px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    color: white; font-family: 'Outfit', sans-serif;
+    font-weight: 800; font-size: 1rem; cursor: pointer; margin-bottom: 10px;
+    box-shadow: 0 4px 24px rgba(99,102,241,0.35);
+    transition: opacity 0.2s;
+  }
+  .upgrade-btn:hover { opacity: 0.88; }
+
+  .close-btn {
+    width: 100%; padding: 11px; border: 1px solid var(--border);
+    border-radius: 14px; background: transparent; color: var(--muted);
+    font-family: 'Outfit', sans-serif; font-size: 0.88rem; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .close-btn:hover { border-color: var(--muted); }
+
+  .badge {
+    font-size: 10px; background: rgba(255,255,255,0.15);
+    padding: 2px 7px; border-radius: 99px; margin-left: 5px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Paywall Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-icon">⚡</div>
+    <h2>Free limit শেষ!</h2>
+    <p>তুমি ৩০টা ফ্রি মেসেজ ব্যবহার করে ফেলেছো।<br>Unlimited chat করতে Upgrade করো।</p>
+
+    <div class="plan-toggle">
+      <button class="plan-btn active" id="monthlyBtn" onclick="setPlan('monthly')">মাসিক</button>
+      <button class="plan-btn" id="yearlyBtn" onclick="setPlan('yearly')">বার্ষিক <span class="badge">-40%</span></button>
+    </div>
+
+    <div class="price-box">
+      <div class="price-amount" id="priceAmount">৳199</div>
+      <div class="price-period" id="pricePeriod">প্রতি মাস</div>
+    </div>
+
+    <ul class="features">
+      <li>✅ Unlimited AI chat</li>
+      <li>✅ বাংলা + English দুটোতেই</li>
+      <li>✅ দ্রুত response</li>
+      <li>✅ সব ধরনের প্রশ্ন করো</li>
+    </ul>
+
+    <button class="upgrade-btn">🚀 Upgrade করো</button>
+    <button class="close-btn" onclick="closeModal()">না থাক, পরে করবো</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">✦</div>
+      <div>
+        <div class="logo-name">AskRedo</div>
+        <div class="logo-sub">Your AI Assistant</div>
+      </div>
+    </div>
+    <div class="counter">
+      <div class="dot" id="statusDot" style="background: var(--green)"></div>
+      <span id="counterText">30 free বাকি</span>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages" id="messages">
+    <div class="msg-row">
+      <div class="avatar ai">✦</div>
+      <div class="bubble ai">হ্যালো! 👋 আমি AskRedo, তোমার AI assistant।
+যেকোনো প্রশ্ন করো — বাংলায় বা ইংরেজিতে!
+
+পড়াশোনা, চাকরি, ব্যবসা, কোডিং — সব বিষয়ে সাহায্য করতে পারি। 🌟</div>
+    </div>
+  </div>
+
+  <!-- Suggestions -->
+  <div class="suggestions" id="suggestions">
+    <div class="suggestions-label">// কিছু প্রশ্ন করো</div>
+    <div class="chips">
+      <button class="chip" onclick="sendSuggestion(this)">আমাকে একটা ছোট গল্প লিখে দাও</button>
+      <button class="chip" onclick="sendSuggestion(this)">Python এ for loop কীভাবে কাজ করে?</button>
+      <button class="chip" onclick="sendSuggestion(this)">একটা ব্যবসার আইডিয়া দাও</button>
+      <button class="chip" onclick="sendSuggestion(this)">ইংরেজিতে email লিখতে সাহায্য করো</button>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <div class="input-box">
+      <textarea
+        id="inputText"
+        rows="1"
+        placeholder="যেকোনো প্রশ্ন করো... বাংলায় বা ইংরেজিতে"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+    </div>
+    <div class="input-footer">
+      <span class="footer-brand">✦ AskRedo</span>
+      <span class="upgrade-nudge" id="upgradeNudge" style="display:none" onclick="showModal()">⚡ Upgrade করো →</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const FREE_LIMIT = 30;
+  let usedMessages = 0;
+  let isLoading = false;
+
+  function autoResize(el) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+  }
+
+  function handleKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function sendSuggestion(btn) {
+    document.getElementById("suggestions").style.display = "none";
+    document.getElementById("inputText").value = btn.textContent;
+    sendMessage();
+  }
+
+  function scrollBottom() {
+    const msgs = document.getElementById("messages");
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function addMessage(role, content, typing = false) {
+    const msgs = document.getElementById("messages");
+    const row = document.createElement("div");
+    row.className = `msg-row ${role === "user" ? "user" : ""}`;
+    row.id = typing ? "typingRow" : "";
+
+    const avatar = document.createElement("div");
+    avatar.className = `avatar ${role === "user" ? "user" : "ai"}`;
+    avatar.textContent = role === "user" ? "👤" : "✦";
+
+    const bubble = document.createElement("div");
+    bubble.className = `bubble ${role === "user" ? "user" : "ai"}`;
+
+    if (typing) {
+      bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+    } else {
+      bubble.textContent = content;
+    }
+
+    if (role === "user") {
+      row.appendChild(bubble);
+      row.appendChild(avatar);
+    } else {
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+    }
+
+    msgs.appendChild(row);
+    scrollBottom();
+    return row;
+  }
+
+  function updateCounter(remaining) {
+    const dot = document.getElementById("statusDot");
+    const text = document.getElementById("counterText");
+    text.textContent = remaining > 0 ? `${remaining} free বাকি` : "Limit শেষ";
+    dot.style.background = remaining > 5 ? "var(--green)" : remaining > 0 ? "var(--gold)" : "var(--red)";
+
+    if (remaining <= 5 && remaining > 0) {
+      document.getElementById("upgradeNudge").style.display = "block";
+    }
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById("inputText");
+    const text = input.value.trim();
+    if (!text || isLoading) return;
+
+    if (usedMessages >= FREE_LIMIT) {
+      showModal();
+      return;
+    }
+
+    document.getElementById("suggestions").style.display = "none";
+    input.value = "";
+    input.style.height = "auto";
+    isLoading = true;
+    document.getElementById("sendBtn").disabled = true;
+
+    addMessage("user", text);
+    const typingRow = addMessage("ai", "", true);
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+
+      const data = await res.json();
+      typingRow.remove();
+
+      if (res.status === 403) {
+        showModal();
+      } else if (data.reply) {
+        addMessage("ai", data.reply);
+        usedMessages = data.used;
+        updateCounter(data.remaining);
+
+        if (data.remaining <= 0) {
+          setTimeout(() => showModal(), 1200);
+        }
+      } else {
+        addMessage("ai", "দুঃখিত, একটু সমস্যা হয়েছে। আবার চেষ্টা করো।");
+      }
+    } catch {
+      typingRow.remove();
+      addMessage("ai", "দুঃখিত, server এ সমস্যা হয়েছে। একটু পর আবার চেষ্টা করো।");
+    }
+
+    isLoading = false;
+    document.getElementById("sendBtn").disabled = false;
+    scrollBottom();
+  }
+
+  // Modal
+  let currentPlan = "monthly";
+
+  function showModal() { document.getElementById("overlay").classList.add("show"); }
+  function closeModal() { document.getElementById("overlay").classList.remove("show"); }
+
+  function setPlan(plan) {
+    currentPlan = plan;
+    document.getElementById("monthlyBtn").classList.toggle("active", plan === "monthly");
+    document.getElementById("yearlyBtn").classList.toggle("active", plan === "yearly");
+    document.getElementById("priceAmount").textContent = plan === "monthly" ? "৳199" : "৳1,199";
+    document.getElementById("pricePeriod").textContent = plan === "monthly" ? "প্রতি মাস" : "প্রতি বছর (৳99/মাস)";
+  }
+</script>
+</body>
+</html>
