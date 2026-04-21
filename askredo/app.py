@@ -1,11 +1,12 @@
 from flask import Flask, request, jsonify, render_template, session
 from groq import Groq
+import os
 
 app = Flask(__name__)
 app.secret_key = "askredo-secret-2024"
 
 # Groq API setup
-GROQ_API_KEY = "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"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
 
 SYSTEM_INSTRUCTION = "তুমি একটি helpful AI assistant নাম AskRedo। তুমি বাংলা এবং ইংরেজি দুটো ভাষাতেই কথা বলতে পারো। ব্যবহারকারী যে ভাষায় কথা বলবে, তুমিও সেই ভাষায় উত্তর দেবে। সংক্ষিপ্ত, সহজবোধ্য এবং helpful উত্তর দেবে।"
